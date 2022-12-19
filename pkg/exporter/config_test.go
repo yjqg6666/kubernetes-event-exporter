@@ -21,6 +21,7 @@ route:
   routes:
     - drop:
         - minCount: 6
+          apiVersion: v33
       match:
         - receiver: stdout
 receivers:
@@ -35,6 +36,7 @@ receivers:
 	assert.Len(t, cfg.Route.Routes[0].Match, 1)
 	assert.Len(t, cfg.Route.Routes[0].Drop, 1)
 
-	assert.Equal(t, cfg.Route.Routes[0].Drop[0].MinCount, int32(6))
-	assert.Equal(t, cfg.Route.Routes[0].Match[0].Receiver, "stdout")
+	assert.Equal(t, int32(6), cfg.Route.Routes[0].Drop[0].MinCount)
+	assert.Equal(t, "v33", cfg.Route.Routes[0].Drop[0].APIVersion)
+	assert.Equal(t, "stdout", cfg.Route.Routes[0].Match[0].Receiver)
 }

@@ -18,7 +18,7 @@ type Rule struct {
 	Labels      map[string]string
 	Annotations map[string]string
 	Message     string
-	APIVersion  string
+	APIVersion  string `yaml:"apiVersion"`
 	Kind        string
 	Namespace   string
 	Reason      string
