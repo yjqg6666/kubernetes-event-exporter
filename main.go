@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opsgenie/kubernetes-event-exporter/pkg/exporter"
-	"github.com/opsgenie/kubernetes-event-exporter/pkg/kube"
+	"github.com/resmoio/kubernetes-event-exporter/pkg/exporter"
+	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
