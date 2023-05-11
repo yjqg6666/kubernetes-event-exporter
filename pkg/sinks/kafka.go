@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"io/ioutil"
+	"strings"
+
 	"github.com/Shopify/sarama"
 	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
 	"github.com/rs/zerolog/log"
-	"io/ioutil"
 )
 
 // KafkaConfig is the Kafka producer configuration
@@ -153,7 +155,7 @@ func createSaramaProducer(cfg *KafkaConfig) (sarama.SyncProducer, error) {
 			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
 		}
 
-		if cfg.TLS.CertFile != "" && cfg.TLS.KeyFile != "" {
+		if validate(cfg.TLS.CertFile) && validate(cfg.TLS.KeyFile) {
 			cert, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
 			if err != nil {
 				return nil, err
@@ -179,4 +181,18 @@ func createSaramaProducer(cfg *KafkaConfig) (sarama.SyncProducer, error) {
 	}
 
 	return producer, nil
+}
+
+// validate checks if the file exists and the content is not empty
+func validate(filePath string) bool {
+	if filePath == "" {
+		return false
+	}
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		log.Warn().Msgf("failed to read file %s - %v", filePath, err)
+		return false
+	}
+	trimmedContent := strings.TrimSpace(string(content))
+	return len(trimmedContent) > 0
 }
