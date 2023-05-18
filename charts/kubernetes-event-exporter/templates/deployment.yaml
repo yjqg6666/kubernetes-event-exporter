@@ -1,6 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    {{- include "kubernetes-event-exporter.labels" . | nindent 4 }}
   name: {{ include "kubernetes-event-exporter.fullname" . }}
   namespace: {{ include "kubernetes-event-exporter.namespace" . }}
 spec:
@@ -15,7 +17,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "kubernetes-event-exporter.selectorLabels" . | nindent 8 }}
+        {{- include "kubernetes-event-exporter.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

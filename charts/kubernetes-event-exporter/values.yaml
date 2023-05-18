@@ -14,6 +14,10 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+# -- Additional labels to add to all resources
+additionalLabels: {}
+  # app: kubernetes-events-exporter
+
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
@@ -94,3 +98,23 @@ config: |
   receivers:
     - name: "dump"
       stdout: {}
+
+serviceMonitor:
+  # -- Enable this if you're using https://github.com/coreos/prometheus-operator
+  enabled: true
+  # -- Namespace to deploy the ServiceMonitor
+  namespace: ""
+
+  # -- Fallback to the prometheus default unless specified
+  interval: 30s
+
+  # -- Add custom labels to the ServiceMonitor resource
+  additionalLabels: {}
+    # prometheus: kube-prometheus
+
+  honorLabels: false
+
+  # -- Path to scrape metrics
+  path: /metrics
+  # -- Timeout for scrape metrics request
+  scrapeTimeout: 10s

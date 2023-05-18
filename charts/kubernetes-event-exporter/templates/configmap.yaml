@@ -1,6 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  labels:
+    {{- include "kubernetes-event-exporter.labels" . | nindent 4 }}
   name: {{ include "kubernetes-event-exporter.fullname" . }}-cfg
   namespace: {{ template "kubernetes-event-exporter.namespace" . }}
 data:
