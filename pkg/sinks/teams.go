@@ -2,13 +2,14 @@ package sinks
 
 import (
 	"bytes"
-	"fmt"
-	"encoding/json"
 	"context"
+	"encoding/json"
 	"errors"
-	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
 )
 
 type TeamsConfig struct {
@@ -43,6 +44,9 @@ func (w *Teams) Send(ctx context.Context, ev *kube.EnhancedEvent) error {
 		"summary": "event",
 		"text":    string([]byte(output)),
 	})
+	if err != nil {
+		return err
+	}
 
 	req, err := http.NewRequest(http.MethodPost, w.cfg.Endpoint, bytes.NewReader(reqBody))
 	if err != nil {
@@ -60,6 +64,9 @@ func (w *Teams) Send(ctx context.Context, ev *kube.EnhancedEvent) error {
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
 
 	// TODO: make this prettier please
 	if resp.StatusCode != http.StatusOK {
