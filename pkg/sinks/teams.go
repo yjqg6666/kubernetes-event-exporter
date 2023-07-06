@@ -44,6 +44,9 @@ func (w *Teams) Send(ctx context.Context, ev *kube.EnhancedEvent) error {
 		"summary": "event",
 		"text":    string([]byte(output)),
 	})
+	if err != nil {
+		return err
+	}
 
 	req, err := http.NewRequest(http.MethodPost, w.cfg.Endpoint, bytes.NewReader(reqBody))
 	if err != nil {
@@ -62,6 +65,10 @@ func (w *Teams) Send(ctx context.Context, ev *kube.EnhancedEvent) error {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	message := string(body)
+
+	if err != nil {
+		return err
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("not 200: %s", message)
