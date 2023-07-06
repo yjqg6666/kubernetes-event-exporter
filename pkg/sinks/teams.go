@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
 )
@@ -61,10 +61,14 @@ func (w *Teams) Send(ctx context.Context, ev *kube.EnhancedEvent) error {
 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
+	message := string(body)
 
-	// TODO: make this prettier please
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("not 200: " + string(body))
+		return fmt.Errorf("not 200: %s", message)
+	}
+	// see: https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/connectors-using?tabs=cURL#rate-limiting-for-connectors
+	if strings.Contains(message, "Microsoft Teams endpoint returned HTTP error 429") {
+		return fmt.Errorf("rate limited: %s", message)
 	}
 
 	return nil
