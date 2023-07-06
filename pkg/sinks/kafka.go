@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"os"
-	"strings"
 
 	"github.com/Shopify/sarama"
 	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
@@ -155,7 +154,7 @@ func createSaramaProducer(cfg *KafkaConfig) (sarama.SyncProducer, error) {
 			InsecureSkipVerify: cfg.TLS.InsecureSkipVerify,
 		}
 
-		if validateFileExistsAndNotEmpty(cfg.TLS.CertFile) && validateFileExistsAndNotEmpty(cfg.TLS.KeyFile) {
+		if cfg.TLS.CertFile != "" && cfg.TLS.KeyFile != "" {
 			cert, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
 			if err != nil {
 				return nil, err
@@ -181,18 +180,4 @@ func createSaramaProducer(cfg *KafkaConfig) (sarama.SyncProducer, error) {
 	}
 
 	return producer, nil
-}
-
-// validate checks if the file exists and the content is not empty
-func validateFileExistsAndNotEmpty(filePath string) bool {
-	if filePath == "" {
-		return false
-	}
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		log.Warn().Msgf("failed to read file %s - %v", filePath, err)
-		return false
-	}
-	trimmedContent := strings.TrimSpace(string(content))
-	return len(trimmedContent) > 0
 }
