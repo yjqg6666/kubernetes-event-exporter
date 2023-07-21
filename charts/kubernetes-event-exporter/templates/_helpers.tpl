@@ -39,7 +39,12 @@ helm.sh/chart: {{ include "kubernetes-event-exporter.chart" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
+app.kubernetes.io/component: metrics
+app.kubernetes.io/part-of: {{ template "kubernetes-event-exporter.name" . }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.additionalLabels }}
+{{ toYaml .Values.additionalLabels }}
+{{- end }}
 {{- end }}
 
 {{/*

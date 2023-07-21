@@ -1,17 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  {{- with .Values.deploymentAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  name: {{ include "kubernetes-event-exporter.fullname" . }}
-  namespace: {{ include "kubernetes-event-exporter.namespace" . }}
   labels:
     {{- include "kubernetes-event-exporter.labels" . | nindent 4 }}
-  {{- with .Values.deploymentLabels }}
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+  name: {{ include "kubernetes-event-exporter.fullname" . }}
+  namespace: {{ include "kubernetes-event-exporter.namespace" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -19,15 +12,14 @@ spec:
       {{- include "kubernetes-event-exporter.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
       {{- with .Values.podAnnotations }}
+      annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "kubernetes-event-exporter.selectorLabels" . | nindent 8 }}
+        {{- include "kubernetes-event-exporter.labels" . | nindent 8 }}
     spec:
-      {{- with .Values.global.imagePullSecrets }}
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -38,28 +30,25 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.global.imageRegistry | default .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
+            - name: metrics
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /-/healthy
-              port: http
+              path: /metrics
+              port: metrics
           readinessProbe:
             httpGet:
-              path: /-/ready
-              port: http
+              path: /metrics
+              port: metrics
           args:
             - -conf=/data/config.yaml
           volumeMounts:
             - mountPath: /data
               name: cfg
-          {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
@@ -74,14 +63,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.topologySpreadConstraints }}
-      topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       volumes:
         - name: cfg
           configMap:
             name: {{ include "kubernetes-event-exporter.fullname" . }}-cfg
-      {{- with .Values.extraVolumes }}
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
