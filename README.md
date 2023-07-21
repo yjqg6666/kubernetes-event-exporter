@@ -26,7 +26,8 @@ resources:
 
 ### Helm
 
-See [Helm Guide](./charts/kubernetes-event-exporter/README.md).
+Please use [Bitnami Chart](https://github.com/bitnami/charts/tree/main/bitnami/kubernetes-event-exporter/) which is 
+comprehensive.
 
 ## Configuration
 
