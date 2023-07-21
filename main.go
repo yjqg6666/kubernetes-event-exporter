@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	conf = flag.String("conf", "config.yaml", "The config path file")
-	addr = flag.String("metrics-address", ":2112", "The address to listen on for HTTP requests.")
+	conf       = flag.String("conf", "config.yaml", "The config path file")
+	addr       = flag.String("metrics-address", ":2112", "The address to listen on for HTTP requests.")
+	kubeconfig = flag.String("kubeconfig", "", "Path to the kubeconfig file to use.")
 )
 
 func main() {
@@ -64,12 +65,12 @@ func main() {
 		log.Fatal().Err(err).Msg("config validation failed")
 	}
 
-	kubeconfig, err := kube.GetKubernetesConfig()
+	kubecfg, err := kube.GetKubernetesConfig(*kubeconfig)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot get kubeconfig")
 	}
-	kubeconfig.QPS = cfg.KubeQPS
-	kubeconfig.Burst = cfg.KubeBurst
+	kubecfg.QPS = cfg.KubeQPS
+	kubecfg.Burst = cfg.KubeBurst
 
 	metrics.Init(*addr)
 	metricsStore := metrics.NewMetricsStore(cfg.MetricsNamePrefix)
@@ -84,12 +85,13 @@ func main() {
 			engine.OnEvent(event)
 		}
 	}
-	w := kube.NewEventWatcher(kubeconfig, cfg.Namespace, cfg.MaxEventAgeSeconds, metricsStore, onEvent)
+
+	w := kube.NewEventWatcher(kubecfg, cfg.Namespace, cfg.MaxEventAgeSeconds, metricsStore, onEvent)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	leaderLost := make(chan bool)
 	if cfg.LeaderElection.Enabled {
-		l, err := kube.NewLeaderElector(cfg.LeaderElection.LeaderElectionID, kubeconfig,
+		l, err := kube.NewLeaderElector(cfg.LeaderElection.LeaderElectionID, kubecfg,
 			func(_ context.Context) {
 				log.Info().Msg("leader election got")
 				w.Start()
