@@ -21,9 +21,9 @@ func Test_ParseConfigFromBites_ExampleConfigIsCorrect(t *testing.T) {
 	assert.NotEmpty(t, config.LogFormat)
 	assert.NotEmpty(t, config.Route)
 	assert.NotEmpty(t, config.Route.Routes)
-	assert.Equal(t, 3, len(config.Route.Routes))
+	assert.Equal(t, 4, len(config.Route.Routes))
 	assert.NotEmpty(t, config.Receivers)
-	assert.Equal(t, 9, len(config.Receivers))
+	assert.Equal(t, 10, len(config.Receivers))
 }
 
 func Test_ParseConfigFromBites_NoErrors(t *testing.T) {
