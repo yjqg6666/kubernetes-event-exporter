@@ -3,8 +3,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: {{ .Values.rbac.namespaced | ternary "Role" "ClusterRole" }}
 metadata:
-  labels:
-    {{- include "kubernetes-event-exporter.labels" . | nindent 4 }}
   name: {{ include "kubernetes-event-exporter.fullname" . }}
   labels:
     {{- include "kubernetes-event-exporter.labels" . | nindent 4 }}
