@@ -68,6 +68,11 @@ receivers:
 * A route can have many sub-routes, forming a tree.
 * Routing starts from the root route.
 
+## Using Secrets
+
+In your config file, you can refer to environment variables as `${API_KEY}` therefore you can use ConfigMap or Secrets 
+to keep the config file clean of secrets.
+
 ## Troubleshoot "Events Discarded" warning:
 
 - If there are `client-side throttling` warnings in the event-exporter log:

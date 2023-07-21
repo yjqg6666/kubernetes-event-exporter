@@ -36,6 +36,7 @@ receivers:
       hosts:
         - "http://localhost:9200"
       indexFormat: "kube-events-{2006-01-02}"
+      apiKey: ${ELASTIC_API_KEY}
   - name: "opensearch-dump"
     opensearch:
       hosts:
