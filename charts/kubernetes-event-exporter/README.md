@@ -3,7 +3,7 @@
 ## Get Repository Info
 
 ```shell
-helm repo add kubernetes-event-exporter https://resmoio.github.io/kubernetes-event-exporter
+helm repo add resmoio https://resmoio.github.io/kubernetes-event-exporter
 helm repo update
 ```
 
