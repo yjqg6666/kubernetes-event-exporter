@@ -7,6 +7,8 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/rest"
 )
 
 func readConfig(t *testing.T, yml string) Config {
@@ -147,4 +149,12 @@ func TestValidate_MetricsNamePrefix_WhenInvalid(t *testing.T) {
 		assert.Equal(t, testPrefix, config.MetricsNamePrefix)
 		assert.Contains(t, output.String(), "config.metricsNamePrefix should match the regex: ^[a-zA-Z][a-zA-Z0-9_:]*_$")
 	}
+}
+
+func TestSetDefaults(t *testing.T) {
+	config := Config{}
+	config.SetDefaults()
+	require.Equal(t, DefaultCacheSize, config.CacheSize)
+	require.Equal(t, rest.DefaultQPS, config.KubeQPS)
+	require.Equal(t, rest.DefaultBurst, config.KubeBurst)
 }

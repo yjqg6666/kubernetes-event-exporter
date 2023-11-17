@@ -2,12 +2,18 @@ package exporter
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 
 	"github.com/resmoio/kubernetes-event-exporter/pkg/kube"
 	"github.com/resmoio/kubernetes-event-exporter/pkg/sinks"
 	"github.com/rs/zerolog/log"
+	"k8s.io/client-go/rest"
+)
+
+const (
+	DefaultCacheSize = 1024
 )
 
 // Config allows configuration
@@ -28,6 +34,24 @@ type Config struct {
 	KubeBurst          int                       `yaml:"kubeBurst,omitempty"`
 	MetricsNamePrefix  string                    `yaml:"metricsNamePrefix,omitempty"`
 	OmitLookup         bool                      `yaml:"omitLookup,omitempty"`
+	CacheSize          int                       `yaml:"cacheSize,omitempty"`
+}
+
+func (c *Config) SetDefaults() {
+	if c.CacheSize == 0 {
+		c.CacheSize = DefaultCacheSize
+		log.Debug().Msg("setting config.cacheSize=1024 (default)")
+	}
+
+	if c.KubeBurst == 0 {
+		c.KubeBurst = rest.DefaultBurst
+		log.Debug().Msg(fmt.Sprintf("setting config.kubeBurst=%d (default)", rest.DefaultBurst))
+	}
+
+	if c.KubeQPS == 0 {
+		c.KubeQPS = rest.DefaultQPS
+		log.Debug().Msg(fmt.Sprintf("setting config.kubeQPS=%.2f (default)", rest.DefaultQPS))
+	}
 }
 
 func (c *Config) Validate() error {
@@ -54,7 +78,7 @@ func (c *Config) validateDefaults() error {
 func (c *Config) validateMaxEventAgeSeconds() error {
 	if c.ThrottlePeriod == 0 && c.MaxEventAgeSeconds == 0 {
 		c.MaxEventAgeSeconds = 5
-		log.Info().Msg("set config.maxEventAgeSeconds=5 (default)")
+		log.Info().Msg("setting config.maxEventAgeSeconds=5 (default)")
 	} else if c.ThrottlePeriod != 0 && c.MaxEventAgeSeconds != 0 {
 		log.Error().Msg("cannot set both throttlePeriod (depricated) and MaxEventAgeSeconds")
 		return errors.New("validateMaxEventAgeSeconds failed")

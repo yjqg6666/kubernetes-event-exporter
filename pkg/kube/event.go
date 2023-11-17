@@ -6,6 +6,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type EnhancedEvent struct {
@@ -40,8 +41,10 @@ func dedotMap(in map[string]string) map[string]string {
 
 type EnhancedObjectReference struct {
 	corev1.ObjectReference `json:",inline"`
-	Labels                 map[string]string `json:"labels,omitempty"`
-	Annotations            map[string]string `json:"annotations,omitempty"`
+	Labels                 map[string]string       `json:"labels,omitempty"`
+	Annotations            map[string]string       `json:"annotations,omitempty"`
+	OwnerReferences        []metav1.OwnerReference `json:"ownerReferences,omitempty"`
+	Deleted                bool                    `json:"deleted"`
 }
 
 // ToJSON does not return an error because we are %99 confident it is JSON serializable.

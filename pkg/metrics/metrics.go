@@ -15,11 +15,13 @@ import (
 )
 
 type Store struct {
-	EventsProcessed prometheus.Counter
-	EventsDiscarded prometheus.Counter
-	WatchErrors     prometheus.Counter
-	SendErrors      prometheus.Counter
-	BuildInfo       prometheus.GaugeFunc
+	EventsProcessed      prometheus.Counter
+	EventsDiscarded      prometheus.Counter
+	WatchErrors          prometheus.Counter
+	SendErrors           prometheus.Counter
+	BuildInfo            prometheus.GaugeFunc
+	KubeApiReadCacheHits prometheus.Counter
+	KubeApiReadRequests  prometheus.Counter
 }
 
 // promLogger implements promhttp.Logger
@@ -119,6 +121,14 @@ func NewMetricsStore(name_prefix string) *Store {
 			Name: name_prefix + "send_event_errors",
 			Help: "The total number of send event errors",
 		}),
+		KubeApiReadCacheHits: promauto.NewCounter(prometheus.CounterOpts{
+			Name: name_prefix + "kube_api_read_cache_hits",
+			Help: "The total number of read requests served from cache when looking up object metadata",
+		}),
+		KubeApiReadRequests: promauto.NewCounter(prometheus.CounterOpts{
+			Name: name_prefix + "kube_api_read_cache_misses",
+			Help: "The total number of read requests served from kube-apiserver when looking up object metadata",
+		}),
 	}
 }
 
@@ -128,5 +138,7 @@ func DestroyMetricsStore(store *Store) {
 	prometheus.Unregister(store.WatchErrors)
 	prometheus.Unregister(store.SendErrors)
 	prometheus.Unregister(store.BuildInfo)
+	prometheus.Unregister(store.KubeApiReadCacheHits)
+	prometheus.Unregister(store.KubeApiReadRequests)
 	store = nil
 }

@@ -62,6 +62,8 @@ func main() {
 		log.Fatal().Str("log_format", cfg.LogFormat).Msg("Unknown log format")
 	}
 
+	cfg.SetDefaults()
+
 	if err := cfg.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("config validation failed")
 	}
@@ -87,7 +89,7 @@ func main() {
 		}
 	}
 
-	w := kube.NewEventWatcher(kubecfg, cfg.Namespace, cfg.MaxEventAgeSeconds, metricsStore, onEvent, cfg.OmitLookup)
+	w := kube.NewEventWatcher(kubecfg, cfg.Namespace, cfg.MaxEventAgeSeconds, metricsStore, onEvent, cfg.OmitLookup, cfg.CacheSize)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	leaderLost := make(chan bool)

@@ -6,6 +6,8 @@ import (
 	"github.com/resmoio/kubernetes-event-exporter/pkg/metrics"
 	"github.com/rs/zerolog/log"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -17,30 +19,32 @@ var startUpTime = time.Now()
 type EventHandler func(event *EnhancedEvent)
 
 type EventWatcher struct {
-	informer           cache.SharedInformer
-	stopper            chan struct{}
-	labelCache         *LabelCache
-	omitLookup         bool
-	annotationCache    *AnnotationCache
-	fn                 EventHandler
-	maxEventAgeSeconds time.Duration
-	metricsStore       *metrics.Store
+	informer            cache.SharedInformer
+	stopper             chan struct{}
+	objectMetadataCache ObjectMetadataProvider
+	omitLookup          bool
+	fn                  EventHandler
+	maxEventAgeSeconds  time.Duration
+	metricsStore        *metrics.Store
+	dynamicClient       *dynamic.DynamicClient
+	clientset           *kubernetes.Clientset
 }
 
-func NewEventWatcher(config *rest.Config, namespace string, MaxEventAgeSeconds int64, metricsStore *metrics.Store, fn EventHandler, omitLookup bool) *EventWatcher {
+func NewEventWatcher(config *rest.Config, namespace string, MaxEventAgeSeconds int64, metricsStore *metrics.Store, fn EventHandler, omitLookup bool, cacheSize int) *EventWatcher {
 	clientset := kubernetes.NewForConfigOrDie(config)
 	factory := informers.NewSharedInformerFactoryWithOptions(clientset, 0, informers.WithNamespace(namespace))
 	informer := factory.Core().V1().Events().Informer()
 
 	watcher := &EventWatcher{
-		informer:           informer,
-		stopper:            make(chan struct{}),
-		labelCache:         NewLabelCache(config),
-		omitLookup:         omitLookup,
-		annotationCache:    NewAnnotationCache(config),
-		fn:                 fn,
-		maxEventAgeSeconds: time.Second * time.Duration(MaxEventAgeSeconds),
-		metricsStore:       metricsStore,
+		informer:            informer,
+		stopper:             make(chan struct{}),
+		objectMetadataCache: NewObjectMetadataProvider(cacheSize),
+		omitLookup:          omitLookup,
+		fn:                  fn,
+		maxEventAgeSeconds:  time.Second * time.Duration(MaxEventAgeSeconds),
+		metricsStore:        metricsStore,
+		dynamicClient:       dynamic.NewForConfigOrDie(config),
+		clientset:           clientset,
 	}
 
 	informer.AddEventHandler(watcher)
@@ -105,29 +109,21 @@ func (e *EventWatcher) onEvent(event *corev1.Event) {
 	if e.omitLookup {
 		ev.InvolvedObject.ObjectReference = *event.InvolvedObject.DeepCopy()
 	} else {
-		labels, err := e.labelCache.GetLabelsWithCache(&event.InvolvedObject)
+		objectMetadata, err := e.objectMetadataCache.GetObjectMetadata(&event.InvolvedObject, e.clientset, e.dynamicClient, e.metricsStore)
 		if err != nil {
-			if ev.InvolvedObject.Kind != "CustomResourceDefinition" {
-				log.Error().Err(err).Msg("Cannot list labels of the object")
+			if errors.IsNotFound(err) {
+				ev.InvolvedObject.Deleted = true
+				log.Error().Err(err).Msg("Object not found, likely deleted")
 			} else {
-				log.Debug().Err(err).Msg("Cannot list labels of the object (CRD)")
+				log.Error().Err(err).Msg("Failed to get object metadata")
 			}
-			// Ignoring error, but log it anyways
-		} else {
-			ev.InvolvedObject.Labels = labels
 			ev.InvolvedObject.ObjectReference = *event.InvolvedObject.DeepCopy()
-		}
-
-		annotations, err := e.annotationCache.GetAnnotationsWithCache(&event.InvolvedObject)
-		if err != nil {
-			if ev.InvolvedObject.Kind != "CustomResourceDefinition" {
-				log.Error().Err(err).Msg("Cannot list annotations of the object")
-			} else {
-				log.Debug().Err(err).Msg("Cannot list annotations of the object (CRD)")
-			}
 		} else {
-			ev.InvolvedObject.Annotations = annotations
+			ev.InvolvedObject.Labels = objectMetadata.Labels
+			ev.InvolvedObject.Annotations = objectMetadata.Annotations
+			ev.InvolvedObject.OwnerReferences = objectMetadata.OwnerReferences
 			ev.InvolvedObject.ObjectReference = *event.InvolvedObject.DeepCopy()
+			ev.InvolvedObject.Deleted = objectMetadata.Deleted
 		}
 	}
 
@@ -145,17 +141,6 @@ func (e *EventWatcher) Start() {
 func (e *EventWatcher) Stop() {
 	e.stopper <- struct{}{}
 	close(e.stopper)
-}
-
-func NewMockEventWatcher(MaxEventAgeSeconds int64, metricsStore *metrics.Store) *EventWatcher {
-	watcher := &EventWatcher{
-		labelCache:         NewMockLabelCache(),
-		annotationCache:    NewMockAnnotationCache(),
-		maxEventAgeSeconds: time.Second * time.Duration(MaxEventAgeSeconds),
-		fn:                 func(event *EnhancedEvent) {},
-		metricsStore:       metricsStore,
-	}
-	return watcher
 }
 
 func (e *EventWatcher) setStartUpTime(time time.Time) {
