@@ -25,3 +25,6 @@ rules:
 - apiGroups: ["*"]
   resources: ["*"]
   verbs: ["get", "watch", "list"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["*"]

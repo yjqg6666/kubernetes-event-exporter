@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"sync"
 	"time"
 
 	"github.com/resmoio/kubernetes-event-exporter/pkg/metrics"
@@ -19,6 +20,7 @@ var startUpTime = time.Now()
 type EventHandler func(event *EnhancedEvent)
 
 type EventWatcher struct {
+	wg                  sync.WaitGroup
 	informer            cache.SharedInformer
 	stopper             chan struct{}
 	objectMetadataCache ObjectMetadataProvider
@@ -135,12 +137,16 @@ func (e *EventWatcher) OnDelete(obj interface{}) {
 }
 
 func (e *EventWatcher) Start() {
-	go e.informer.Run(e.stopper)
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		e.informer.Run(e.stopper)
+	}()
 }
 
 func (e *EventWatcher) Stop() {
-	e.stopper <- struct{}{}
 	close(e.stopper)
+	e.wg.Wait()
 }
 
 func (e *EventWatcher) setStartUpTime(time time.Time) {

@@ -7,14 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ParseConfigFromBites_ExampleConfigIsCorrect(t *testing.T) {
+func Test_ParseConfigFromBytes_ExampleConfigIsCorrect(t *testing.T) {
 	configBytes, err := os.ReadFile("../../config.example.yaml")
 	if err != nil {
 		assert.NoError(t, err, "cannot read config file: "+err.Error())
 		return
 	}
 
-	config, err := ParseConfigFromBites(configBytes)
+	config, err := ParseConfigFromBytes(configBytes)
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, config.LogLevel)
@@ -26,26 +26,26 @@ func Test_ParseConfigFromBites_ExampleConfigIsCorrect(t *testing.T) {
 	assert.Equal(t, 10, len(config.Receivers))
 }
 
-func Test_ParseConfigFromBites_NoErrors(t *testing.T) {
+func Test_ParseConfigFromBytes_NoErrors(t *testing.T) {
 	configBytes := []byte(`
 logLevel: info
 logFormat: json
 `)
 
-	config, err := ParseConfigFromBites(configBytes)
+	config, err := ParseConfigFromBytes(configBytes)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "info", config.LogLevel)
 	assert.Equal(t, "json", config.LogFormat)
 }
 
-func Test_ParseConfigFromBites_ErrorWhenCurlyBracesNotEscaped(t *testing.T) {
+func Test_ParseConfigFromBytes_ErrorWhenCurlyBracesNotEscaped(t *testing.T) {
 	configBytes := []byte(`
 logLevel: {{info}}
 logFormat: json
 `)
 
-	config, err := ParseConfigFromBites(configBytes)
+	config, err := ParseConfigFromBytes(configBytes)
 
 	expectedErrorLine := ">  2 | logLevel: {{info}}"
 	expectedErrorSuggestion := "Need to wrap values with special characters in quotes"
@@ -56,26 +56,26 @@ logFormat: json
 	assert.Equal(t, "", config.LogFormat)
 }
 
-func Test_ParseConfigFromBites_OkWhenCurlyBracesEscaped(t *testing.T) {
+func Test_ParseConfigFromBytes_OkWhenCurlyBracesEscaped(t *testing.T) {
 	configBytes := []byte(`
 logLevel: "{{info}}"
 logFormat: json
 `)
 
-	config, err := ParseConfigFromBites(configBytes)
+	config, err := ParseConfigFromBytes(configBytes)
 
 	assert.Nil(t, err)
 	assert.Equal(t, "{{info}}", config.LogLevel)
 	assert.Equal(t, "json", config.LogFormat)
 }
 
-func Test_ParseConfigFromBites_ErrorErrorNotWithCurlyBraces(t *testing.T) {
+func Test_ParseConfigFromBytes_ErrorErrorNotWithCurlyBraces(t *testing.T) {
 	configBytes := []byte(`
 logLevelNotYAMLErrorError
 logFormat: json
 `)
 
-	config, err := ParseConfigFromBites(configBytes)
+	config, err := ParseConfigFromBytes(configBytes)
 
 	expectedErrorLine := ">  2 | logLevelNotYAMLErrorError"
 	expectedErrorSuggestion := "Need to wrap values with special characters in quotes"

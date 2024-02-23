@@ -8,7 +8,7 @@ import (
 	"github.com/resmoio/kubernetes-event-exporter/pkg/exporter"
 )
 
-func ParseConfigFromBites(configBytes []byte) (exporter.Config, error) {
+func ParseConfigFromBytes(configBytes []byte) (exporter.Config, error) {
 	var config exporter.Config
 	err := yaml.Unmarshal(configBytes, &config)
 	if err != nil {

@@ -34,7 +34,7 @@ func main() {
 
 	configBytes = []byte(os.ExpandEnv(string(configBytes)))
 
-	cfg, err := setup.ParseConfigFromBites(configBytes)
+	cfg, err := setup.ParseConfigFromBytes(configBytes)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -64,6 +64,8 @@ func main() {
 
 	cfg.SetDefaults()
 
+	log.Info().Msgf("Starting with config: %#v", cfg)
+
 	if err := cfg.Validate(); err != nil {
 		log.Fatal().Err(err).Msg("config validation failed")
 	}
@@ -91,45 +93,61 @@ func main() {
 
 	w := kube.NewEventWatcher(kubecfg, cfg.Namespace, cfg.MaxEventAgeSeconds, metricsStore, onEvent, cfg.OmitLookup, cfg.CacheSize)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	leaderLost := make(chan bool)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	if cfg.LeaderElection.Enabled {
+		var wasLeader bool
+		log.Info().Msg("leader election enabled")
+
+		onStoppedLeading := func(ctx context.Context) {
+			select {
+			case <-ctx.Done():
+				log.Info().Msg("Context was cancelled, stopping leader election loop")
+			default:
+				log.Info().Msg("Lost the leader lease, stopping leader election loop")
+			}
+		}
+
 		l, err := kube.NewLeaderElector(cfg.LeaderElection.LeaderElectionID, kubecfg,
+			// this method gets called when this instance becomes the leader
 			func(_ context.Context) {
-				log.Info().Msg("leader election got")
+				wasLeader = true
+				log.Info().Msg("leader election won")
 				w.Start()
 			},
+			// this method gets called when the leader election loop is closed
+			// either due to context cancellation or due to losing the leader lease
 			func() {
-				log.Error().Msg("leader election lost")
-				leaderLost <- true
+				onStoppedLeading(ctx)
+			},
+			func(identity string) {
+				log.Info().Msg("new leader observed: " + identity)
 			},
 		)
 		if err != nil {
 			log.Fatal().Err(err).Msg("create leaderelector failed")
 		}
-		go l.Run(ctx)
+
+		// Run returns if either the context is canceled or client stopped holding the leader lease
+		l.Run(ctx)
+
+		// We get here either because we lost the leader lease or the context was canceled.
+		// In either case we want to stop the event watcher and exit.
+		// However, if we were the leader, we wait leaseDuration seconds before stopping
+		// so that we don't lose events until the next leader is elected. The new leader
+		// will only be elected after leaseDuration seconds.
+		if wasLeader {
+			log.Info().Msgf("waiting leaseDuration seconds before stopping: %s", kube.GetLeaseDuration())
+			time.Sleep(kube.GetLeaseDuration())
+		}
 	} else {
+		log.Info().Msg("leader election disabled")
 		w.Start()
+		<-ctx.Done()
 	}
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-
-	gracefulExit := func() {
-		defer close(c)
-		defer close(leaderLost)
-		cancel()
-		w.Stop()
-		engine.Stop()
-		log.Info().Msg("Exiting")
-	}
-
-	select {
-	case sig := <-c:
-		log.Info().Str("signal", sig.String()).Msg("Received signal to exit")
-		gracefulExit()
-	case <-leaderLost:
-		log.Warn().Msg("Leader election lost")
-		gracefulExit()
-	}
+	log.Info().Msg("Received signal to exit. Stopping.")
+	w.Stop()
+	engine.Stop()
 }
